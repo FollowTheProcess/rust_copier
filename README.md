@@ -8,15 +8,16 @@ A clean, simple Rust copier template.
 
 ### Choose Project Type
 
-The template lets you choose whether you want to create a binary executable program (e.g. a CLI) or an importable library and the generated files will be tailored accordingly!
+The template lets you choose whether you want to create a binary executable program (e.g. a CLI) or an importable library and the generated files will be tailored accordingly! For example, in a binary project, GitHub Actions will be configured to build across a range of OS and Architectures and upload the build binaries as release artifacts.
 
 ### [GitHub Actions]
 
 The project template comes with a ready to go GitHub Actions configuration file which automates all your code quality checks:
 
 * Testing with `cargo test`
-* Linting with clippy on it's most pedantic setting
+* Linting with `clippy`
 * Formatting with `rustfmt`
+* Building, cross-compilation and release (for binary packages)
 
 ### [GitHub CLI]
 
