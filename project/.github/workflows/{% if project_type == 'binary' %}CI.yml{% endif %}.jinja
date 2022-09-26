@@ -1,0 +1,194 @@
+name: CI
+
+on: [push, pull_request]
+
+concurrency:
+  group: {% raw %}${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: --deny warnings
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Cargo Check
+        run: cargo check --locked
+
+  test:
+    name: Test
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Tests
+        run: cargo test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          components: clippy, rustfmt
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Linting
+        run: cargo clippy --all-targets --all-features
+
+  build:
+    name: Build Release Binaries
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    needs: [check, test, lint]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: starship-x86_64-unknown-linux-gnu.tar.gz
+
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            name: starship-x86_64-unknown-linux-musl.tar.gz
+
+          - target: i686-unknown-linux-musl
+            os: ubuntu-latest
+            name: starship-i686-unknown-linux-musl.tar.gz
+
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            name: starship-aarch64-unknown-linux-musl.tar.gz
+
+          - target: arm-unknown-linux-musleabihf
+            os: ubuntu-latest
+            name: starship-arm-unknown-linux-musleabihf.tar.gz
+
+          - target: x86_64-unknown-freebsd
+            os: ubuntu-latest
+            name: starship-x86_64-unknown-freebsd.tar.gz
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: starship-x86_64-apple-darwin.tar.gz
+
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: starship-aarch64-apple-darwin.tar.gz
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: starship-x86_64-pc-windows-msvc.zip
+
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+            name: starship-i686-pc-windows-msvc.zip
+
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            name: starship-aarch64-pc-windows-msvc.zip
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+          target: {% raw %}${{ matrix.target }}{% endraw %}
+
+      - name: Checkout Code
+        uses: actions/checkout@v3  
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --locked --target {% raw %}${{ matrix.target }}{% endraw %}
+          use-cross: {% raw %}${{ matrix.os == 'ubuntu-latest' }}{% endraw %}
+
+      - name: Prepare Artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
+          7z a ../../../{% raw %}${{ matrix.name }}{% endraw %} {{project_slug}}.exe
+          cd -
+
+      - name: Prepare Artifacts (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
+          tar czvf ../../../{% raw %}${{ matrix.name }}{% endraw %} {{project_slug}}
+          cd -
+
+      - name: Release | Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: {% raw %}${{ matrix.name }}{% endraw %}
+          path: {% raw %}${{ matrix.name }}{% endraw %}
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [check, test, lint, build]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Get Built Binaries
+        uses: actions/download-artifact@v3
+
+      - name: Make GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: {{project_slug}}-*/{{project_slug}}-*
+          tag_name: {% raw %}${{ github.ref }}{% endraw %}
+
+  cargo_publish:
+    name: Publish Package to crates.io
+    runs-on: ubuntu-latest
+    needs: [check, test, lint, build]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Publish
+        run: cargo publish --token ${{ secrets.CARGO_TOKEN }}

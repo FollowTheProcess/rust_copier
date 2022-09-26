@@ -1,0 +1,100 @@
+name: CI
+
+on: [push, pull_request]
+
+concurrency:
+  group: {% raw %}${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: --deny warnings
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Cargo Check
+        run: cargo check --locked
+
+  test:
+    name: Test
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Tests
+        run: cargo test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          components: clippy, rustfmt
+          override: true
+          toolchain: stable
+
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Linting
+        run: cargo clippy --all-targets --all-features
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [check, test, lint, build]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Make GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: {% raw %}${{ github.ref }}{% endraw %}
+
+  cargo_publish:
+    name: Publish Package to crates.io
+    runs-on: ubuntu-latest
+    needs: [check, test, lint, build]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Publish
+        run: cargo publish --token ${{ secrets.CARGO_TOKEN }}
