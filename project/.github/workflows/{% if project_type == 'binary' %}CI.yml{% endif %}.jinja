@@ -152,7 +152,7 @@ jobs:
           tar czvf ../../../{% raw %}${{ matrix.name }}{% endraw %} {{project_slug}}
           cd -
 
-      - name: Release | Upload artifacts
+      - name: Upload Built Binaries
         uses: actions/upload-artifact@v3
         with:
           name: {% raw %}${{ matrix.name }}{% endraw %}
