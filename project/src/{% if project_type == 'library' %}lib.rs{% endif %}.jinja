@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
