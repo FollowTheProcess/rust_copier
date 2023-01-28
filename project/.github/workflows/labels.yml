@@ -1,25 +1,21 @@
 name: Labels
+permissions:
+  contents: write
 
 on:
   push:
     branches:
       - main
-    paths:
-      - .github/labels.yml
-      - .github/workflows/labels.yml
 
 jobs:
   labeler:
+    name: Labels
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Check out the repository
         uses: actions/checkout@v3
 
       - name: Run Labeler
-        if: success()
         uses: crazy-max/ghaction-github-labeler@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          yaml-file: .github/labels.yml
-          skip-delete: false
-          dry-run: false
+          skip-delete: true
