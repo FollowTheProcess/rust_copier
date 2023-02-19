@@ -1,7 +1,9 @@
 #![warn(clippy::pedantic)]
+#![warn(missing_docs)]
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
+//! Add two numbers together.
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
