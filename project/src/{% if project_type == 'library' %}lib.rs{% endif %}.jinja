@@ -3,7 +3,14 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
-//! Add two numbers together.
+/// Adds two numbers together.
+/// # Examples
+/// ```
+/// use {{project_slug}}::add;
+///
+/// assert_eq!(4, add(2, 2));
+/// ```
+#[must_use]
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
