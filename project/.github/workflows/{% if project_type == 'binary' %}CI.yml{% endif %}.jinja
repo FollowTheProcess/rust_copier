@@ -145,15 +145,17 @@ jobs:
         env:
           VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         run: |
-          {% raw %}cd target/${{ matrix.target }}/release
-          tar czvf ../../../brewtest-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
+          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
+          tar czvf ../../../{{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
           cd -
 
       - name: Upload Built Binaries
         uses: actions/upload-artifact@v3
+        env:
+          VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         with:
-          name: {% raw %}${{ matrix.name }}{% endraw %}
-          path: {% raw %}${{ matrix.name }}{% endraw %}
+          name: {{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          path: {{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
 
   release:
     name: GitHub Release
