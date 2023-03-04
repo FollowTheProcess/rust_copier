@@ -162,6 +162,19 @@ jobs:
         with:
           release_id: {% raw %}${{ steps.create_release.outputs.id }}{% endraw %}
 
+      - name: Publish Homebrew Release
+        uses: Justintime50/homebrew-releaser@v1
+        with:
+          homebrew_owner: FollowTheProcess
+          homebrew_tap: homebrew-tap
+          formula_folder: Formula
+          github_token: {% raw %}${{ secrets.HOMEBREW_TAP_TOKEN }}{% endraw %}
+          install: bin.install "brewtest"
+          target_darwin_amd64: true
+          target_darwin_arm64: true
+          target_linux_amd64: true
+          target_linux_arm64: false
+
   cargo_publish:
     name: Publish Package
     runs-on: ubuntu-latest
