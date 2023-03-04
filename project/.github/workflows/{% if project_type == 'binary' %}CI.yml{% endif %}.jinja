@@ -69,6 +69,21 @@ jobs:
       - name: Run Linting
         run: cargo clippy --all-targets --all-features
 
+  version:
+    name: Parse Release Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: {% raw %}${{ steps.version.outputs.version }}{% endraw %}
+
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Set Version Number
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
   build:
     name: Build Release Binaries
     runs-on: {% raw %}${{ matrix.os }}{% endraw %}
@@ -76,30 +91,42 @@ jobs:
       - check
       - test
       - lint
+      - version
 
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
     strategy:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            name: {{project_slug}}-{% raw %}${{ github.ref_name }}{% endraw %}-linux-x86_64.tar.gz
+            platform: linux
+            arch: amd64
+            name: {{project_slug}}
 
           - target: x86_64-apple-darwin
             os: macos-latest
-            name: {{project_slug}}-{% raw %}${{ github.ref_name }}{% endraw %}-macos-x86_64.tar.gz
+            platform: darwin
+            arch: amd64
+            name: {{project_slug}}
 
           - target: aarch64-apple-darwin
             os: macos-latest
-            name: {{project_slug}}-{% raw %}${{ github.ref_name }}{% endraw %}-macos-arm64.tar.gz
+            platform: darwin
+            arch: arm64
+            name: {{project_slug}}
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            name: {{project_slug}}-{% raw %}${{ github.ref_name }}{% endraw %}-windows-x86_64.zip
+            platform: windows
+            arch: amd64
+            name: {{project_slug}}.exe
 
           - target: aarch64-pc-windows-msvc
             os: windows-latest
-            name: {{project_slug}}-{% raw %}${{ github.ref_name }}{% endraw %}-windows-arm64.zip
+            platform: windows
+            arch: arm64
+            name: {{project_slug}}.exe
 
     steps:
       - name: Set up Rust
@@ -114,18 +141,12 @@ jobs:
         run: |
           cargo build --release --locked --target {% raw %}${{ matrix.target }}{% endraw %}
 
-      - name: Prepare Artifacts (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Prepare Artifacts
+        env:
+          VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         run: |
-          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
-          7z a ../../../{% raw %}${{ matrix.name }}{% endraw %} {{project_slug}}.exe
-          cd -
-
-      - name: Prepare Artifacts (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
-          tar czvf ../../../{% raw %}${{ matrix.name }}{% endraw %} {{project_slug}}
+          {% raw %}cd target/${{ matrix.target }}/release
+          tar czvf ../../../brewtest-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
           cd -
 
       - name: Upload Built Binaries
