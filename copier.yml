@@ -14,6 +14,12 @@ project_type:
     - binary
     - library
 
+binary_name:
+  help: Name of the binary program
+  type: str
+  default: "{{project_slug}}"
+  when: "{{ project_type == 'binary' }}"
+
 description:
   help: Short description of your project
   type: str
@@ -22,11 +28,10 @@ license:
   help: Which open source license to use
   type: str
   choices:
-    - MIT License
-    - BSD License
-    - ISC License
-    - Apache Software License 2.0
-    - GNU General Public License v3
+    MIT License: MIT
+    BSD3 Clause: BSD-3-Clause
+    Apache License 2.0: Apache-2.0
+    GNU General Public License v3: GPL-3.0-or-later
 
 github_username:
   help: Your GitHub username

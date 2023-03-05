@@ -11,4 +11,10 @@ readme = "README.md"
 keywords = [ "keywords", "here" ]
 categories = [ "command-line-utilities" ]
 
+{% if project_type == 'binary' -%}
+[[bin]]
+name = "{{binary_name}}"
+path = "src/main.rs"
+{%- endif %}
+
 [dependencies]

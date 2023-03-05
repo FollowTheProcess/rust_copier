@@ -102,31 +102,31 @@ jobs:
             os: ubuntu-latest
             platform: linux
             arch: amd64
-            name: {{project_slug}}
+            name: {{binary_name}}
 
           - target: x86_64-apple-darwin
             os: macos-latest
             platform: darwin
             arch: amd64
-            name: {{project_slug}}
+            name: {{binary_name}}
 
           - target: aarch64-apple-darwin
             os: macos-latest
             platform: darwin
             arch: arm64
-            name: {{project_slug}}
+            name: {{binary_name}}
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             platform: windows
             arch: amd64
-            name: {{project_slug}}.exe
+            name: {{binary_name}}.exe
 
           - target: aarch64-pc-windows-msvc
             os: windows-latest
             platform: windows
             arch: arm64
-            name: {{project_slug}}.exe
+            name: {{binary_name}}.exe
 
     steps:
       - name: Set up Rust
@@ -146,7 +146,7 @@ jobs:
           VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         run: |
           cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
-          tar czvf ../../../{{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
+          tar czvf ../../../{{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
           cd -
 
       - name: Upload Built Binaries
@@ -154,8 +154,8 @@ jobs:
         env:
           VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         with:
-          name: {{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
-          path: {{project_slug}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          name: {{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          path: {{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
 
   release:
     name: GitHub Release
@@ -176,7 +176,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          files: {{project_slug}}-*/{{project_slug}}-*
+          files: {{binary_name}}-*/{{binary_name}}-*
 
       - name: Publish Draft Release
         uses: eregon/publish-release@v1
@@ -185,33 +185,8 @@ jobs:
         with:
           release_id: {% raw %}${{ steps.create_release.outputs.id }}{% endraw %}
 
-  homebrew_tap:
-    name: Update Homebrew Tap
-    runs-on: ubuntu-latest
-    needs:
-      - release
-
-    permissions:
-      contents: write
-
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Publish Homebrew Release
-        uses: Justintime50/homebrew-releaser@v1
-        with:
-          homebrew_owner: FollowTheProcess
-          homebrew_tap: homebrew-tap
-          formula_folder: Formula
-          github_token: {% raw %}${{ secrets.HOMEBREW_TAP_TOKEN }}{% endraw %}
-          install: bin.install "{{project_slug}}"
-          target_darwin_amd64: true
-          target_darwin_arm64: true
-          target_linux_amd64: true
-          target_linux_arm64: false
-
   cargo_publish:
-    name: Publish Package to Crates.io
+    name: Publish Crate
     runs-on: ubuntu-latest
     needs:
       - release
