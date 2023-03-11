@@ -172,13 +172,20 @@ jobs:
       - name: Get Built Binaries
         uses: actions/download-artifact@v3
 
+      - name: Calculate Checksums
+        run: |
+          mkdir -p ./tarballs
+          cp {{binary_name}}-*/{{binary_name}}-* ./tarballs
+          cd tarballs
+          shasum -a 256 * > ../checksums.txt
+
       - name: Publish Draft Release
         env:
           GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: |
           {% raw %}DRAFT_RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases --jq '.[] | select(.draft==true) | .tag_name')
           gh release edit $DRAFT_RELEASE_TAG --draft=false --latest --tag ${{ github.ref_name }} --title ${{ github.ref_name }} --repo ${{ github.repository }}
-          gh release upload ${{ github.ref_name }} --repo ${{ github.repository }}{% endraw %} {{binary_name}}-*/{{binary_name}}-*
+          gh release upload ${{ github.ref_name }} --repo ${{ github.repository }}{% endraw %} tarballs/* checksums.txt
 
   cargo_publish:
     name: Publish Crate
