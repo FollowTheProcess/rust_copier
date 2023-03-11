@@ -177,8 +177,8 @@ jobs:
           GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
         run: |
           {% raw %}DRAFT_RELEASE_TAG=$(gh api repos/${{ github.repository }}/releases --jq '.[] | select(.draft==true) | .tag_name')
-          gh release edit $DRAFT_RELEASE_TAG --draft=false --latest --tag ${{ github.ref_name }} --title ${{ github.ref_name }}
-          gh release upload ${{ github.ref_name }}{% endraw %} {{binary_name}}-*/{{binary_name}}-*
+          gh release edit $DRAFT_RELEASE_TAG --draft=false --latest --tag ${{ github.ref_name }} --title ${{ github.ref_name }} --repo ${{ github.repository }}
+          gh release upload ${{ github.ref_name }} --repo ${{ github.repository }}{% endraw %} {{binary_name}}-*/{{binary_name}}-*
 
   cargo_publish:
     name: Publish Crate
