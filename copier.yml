@@ -50,18 +50,4 @@ author_email:
   help: Your email address
   type: str
 
-initialise_git_repo:
-  help: Initialise a new local git repo
-  type: bool
-  default: false
-
-create_github_repo:
-  help: Create a GitHub repo
-  type: bool
-  default: false
-
 _subdirectory: project
-_tasks:
-  - "{% if project_type == 'binary' %}cargo generate-lockfile{% else %}echo 'Skipping lockfile generation for a library package'{% endif %}"
-  - "{% if initialise_git_repo %}git init --initial-branch=main && git add -A && git commit -m 'Initial Commit (Automated at Project Creation)'{% else %}echo 'Skipping repo initialisation'{% endif %}"
-  - "{% if create_github_repo %}gh repo create {{project_slug}} --public --description '{{description}}' --remote origin --source . && git push --set-upstream origin main{% else %}echo 'Skipping github repo creation'{% endif %}"
