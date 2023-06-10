@@ -85,18 +85,27 @@ jobs:
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
 
     steps:
-      - name: Make GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+      - name: Checkout Code
+        uses: actions/checkout@v3
         with:
-          files: {{project_slug}}-*/{{project_slug}}-*
+          fetch-depth: 0
+
+      - name: Fetch Existing Tags
+        run: git fetch --force --tags
+
+      - name: Parse Release Version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Publish Draft Release
-        uses: eregon/publish-release@v1
+        uses: release-drafter/release-drafter@v5
+        with:
+          version: {% raw %}${{ steps.version.outputs.version }}{% endraw %}
+          publish: true
         env:
           GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
-        with:
-          release_id: {% raw %}${{ steps.create_release.outputs.id }}{% endraw %}
 
   cargo_publish:
     name: Publish Package
