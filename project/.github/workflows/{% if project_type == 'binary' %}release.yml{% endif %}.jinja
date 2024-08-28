@@ -6,18 +6,20 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
 concurrency:
-  group: {% raw %}${{ github.ref }}{% endraw %}
-  cancel-in-progress: true
+  group: {% raw %}${{ github.workflow }}-${{ github.ref || github.head_ref }}{% endraw %}
+  cancel-in-progress: false # Only 1 release job allowed at a time
 
 env:
   RUSTFLAGS: --deny warnings
 
-permissions: read-all
+permissions: {}
 
 jobs:
   version:
     name: Parse Release Version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: {% raw %}${{ steps.version.outputs.version }}{% endraw %}
 
@@ -40,6 +42,8 @@ jobs:
   build:
     name: Build Release Binaries
     runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    permissions:
+      contents: read
     needs:
       - version
 
@@ -89,20 +93,16 @@ jobs:
         run: cargo build --release --locked --target {% raw %}${{ matrix.target }}{% endraw %}
 
       - name: Prepare Artifacts
-        env:
-          VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         run: |
           cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
-          tar czvf ../../../{{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
+          tar czvf ../../../{{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
           cd -
 
       - name: Upload Built Binaries
         uses: actions/upload-artifact@v3
-        env:
-          VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
         with:
-          name: {{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
-          path: {{binary_name}}-{% raw %}${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          name: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          path: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
 
   release:
     name: GitHub Release
@@ -151,6 +151,9 @@ jobs:
   cargo_publish:
     name: Publish Crate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     needs:
       - release
 

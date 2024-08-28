@@ -6,21 +6,21 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
 concurrency:
-  group: {% raw %}${{ github.ref }}{% endraw %}
-  cancel-in-progress: true
+  group: {% raw %}${{ github.workflow }}-${{ github.ref || github.head_ref }}{% endraw %}
+  cancel-in-progress: false # Only 1 release job allowed at a time
 
 env:
   RUSTFLAGS: --deny warnings
 
-permissions: read-all
+permissions: {}
 
 jobs:
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
+      pull-requests: read
 
     steps:
       - name: Checkout Code
@@ -48,6 +48,9 @@ jobs:
   cargo_publish:
     name: Publish Package
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     needs:
       - release
 

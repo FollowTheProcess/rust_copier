@@ -7,18 +7,20 @@ on:
       - main
 
 concurrency:
-  group: {% raw %}${{ github.ref }}{% endraw %}
+  group: ${{ github.workflow }}-${{ github.ref || github.head_ref }}
   cancel-in-progress: true
 
 env:
   RUSTFLAGS: --deny warnings
 
-permissions: read-all
+permissions: {}
 
 jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Set up Rust
@@ -32,7 +34,9 @@ jobs:
 
   test:
     name: Test
-    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         os:
@@ -53,6 +57,8 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Set up Rust
