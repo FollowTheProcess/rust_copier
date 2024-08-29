@@ -50,4 +50,4 @@ author_email:
   help: Your email address
   type: str
 
-_subdirectory: project
+_subdirectory: template
