@@ -6,7 +6,7 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
 concurrency:
-  group: {% raw %}${{ github.workflow }}-${{ github.ref || github.head_ref }}{% endraw %}
+  group: {% raw %}${{ github.workflow }}-${{ github.head_ref || github.ref }}{% endraw %}
   cancel-in-progress: false # Only 1 release job allowed at a time
 
 env:
@@ -41,68 +41,93 @@ jobs:
 
   build:
     name: Build Release Binaries
-    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+    runs-on: {% raw %}${{ matrix.build.os }}{% endraw %}
     permissions:
       contents: read
     needs:
       - version
 
     strategy:
+      fail-fast: false
       matrix:
-        include:
+        build:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             platform: linux
             arch: x86_64
-            name: {{binary_name}}
+            cmd: cargo
+
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            cmd: cross
+
+          - target: x86_64-unknown-freebsd
+            os: ubuntu-latest
+            platform: freebsd
+            arch: x86_64
+            cmd: cross
 
           - target: x86_64-apple-darwin
             os: macos-latest
             platform: macos
             arch: x86_64
-            name: {{binary_name}}
+            cmd: cargo
 
           - target: aarch64-apple-darwin
             os: macos-latest
             platform: macos
             arch: arm64
-            name: {{binary_name}}
+            cmd: cargo
 
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             platform: windows
             arch: x86_64
-            name: {{binary_name}}.exe
+            cmd: cargo
 
           - target: aarch64-pc-windows-msvc
             os: windows-latest
             platform: windows
             arch: arm64
-            name: {{binary_name}}.exe
+            cmd: cargo
+
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+            platform: windows
+            arch: i686
+            cmd: cargo
 
     steps:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: {% raw %}${{ matrix.target }}{% endraw %}
+          targets: {% raw %}${{ matrix.build.target }}{% endraw %}
+
+      - name: Install Cross
+        if: matrix.build.cmd == 'cross'
+        uses: jaxxstorm/action-install-gh-release@v1.12.0
+        with:
+          repo: cross-rs/cross
 
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Build
-        run: cargo build --release --locked --target {% raw %}${{ matrix.target }}{% endraw %}
+        run: {% raw %}${{ matrix.build.cmd }}{% endraw %} build --release --locked --target {% raw %}${{ matrix.build.target }}{% endraw %}
 
       - name: Prepare Artifacts
         run: |
-          cd target/{% raw %}${{ matrix.target }}{% endraw %}/release
-          tar czvf ../../../{{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz ${{ matrix.name }}{% endraw %}
+          cd target/{% raw %}${{ matrix.build.target }}{% endraw %}/release
+          tar czvf ../../../{{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.build.platform }}-${{ matrix.build.arch }}.tar.gz ${{ matrix.build.os == 'windows-latest' && {% endraw %}'{{binary_name}}.exe' || '{{binary_name}}'{% raw %} }}{% endraw %}
           cd -
 
       - name: Upload Built Binaries
         uses: actions/upload-artifact@v4
         with:
-          name: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
-          path: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz{% endraw %}
+          name: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.build.platform }}-${{ matrix.build.arch }}.tar.gz{% endraw %}
+          path: {{binary_name}}-{% raw %}${{ needs.version.outputs.version }}-${{ matrix.build.platform }}-${{ matrix.build.arch }}.tar.gz{% endraw %}
 
   release:
     name: GitHub Release
@@ -118,11 +143,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Fetch Existing Tags
-        run: git fetch --force --tags
 
       - name: Get Built Binaries
         uses: actions/download-artifact@v4
@@ -135,17 +155,16 @@ jobs:
           shasum -a 256 * > ../checksums.txt
 
       - name: Publish Draft Release
-        uses: release-drafter/release-drafter@v5
+        uses: release-drafter/release-drafter@v6
         with:
-          version: {% raw %}${{ env.VERSION }}{% endraw %}
+          version: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
           publish: true
         env:
-          VERSION: {% raw %}${{ needs.version.outputs.version }}{% endraw %}
-          GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+          GITHUB_TOKEN: {% raw %}${{ github.token }}{% endraw %}
 
       - name: Upload Binaries
         env:
-          GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+          GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
         run: {% raw %}gh release upload ${{ github.ref_name }} --repo ${{ github.repository }}{% endraw %} tarballs/* checksums.txt
 
   cargo_publish:
