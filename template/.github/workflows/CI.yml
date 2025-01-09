@@ -7,70 +7,14 @@ on:
       - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
-
-env:
-  RUSTFLAGS: --deny warnings
 
 permissions: {}
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
+  ci:
+    name: CI
     permissions:
       contents: read
-
-    steps:
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Cargo Check
-        run: cargo check --locked
-
-  test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-
-    steps:
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Run Tests
-        run: cargo test
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Check Formatting
-        run: cargo fmt --all -- --check
-
-      - name: Run Linting
-        run: cargo clippy --all-targets --all-features
+    uses: FollowTheProcess/ci/.github/workflows/Rust.yml@v1
