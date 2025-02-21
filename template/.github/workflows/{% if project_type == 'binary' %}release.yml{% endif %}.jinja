@@ -102,8 +102,8 @@ jobs:
     steps:
       - name: Set up Rust
         run: |
-          rustup update --no-self-update ${{ matrix.build.target }}
-          rustup default ${{ matrix.build.target }}
+          rustup update --no-self-update {% raw %}${{ matrix.build.target }}{% endraw %}
+          rustup default {% raw %}${{ matrix.build.target }}{% endraw %}
 
       - name: Install Cross
         if: matrix.build.cmd == 'cross'
