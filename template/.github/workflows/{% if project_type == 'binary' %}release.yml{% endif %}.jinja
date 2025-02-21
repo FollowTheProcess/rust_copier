@@ -101,13 +101,13 @@ jobs:
 
     steps:
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: {% raw %}${{ matrix.build.target }}{% endraw %}
+        run: |
+          rustup update --no-self-update ${{ matrix.build.target }}
+          rustup default ${{ matrix.build.target }}
 
       - name: Install Cross
         if: matrix.build.cmd == 'cross'
-        uses: jaxxstorm/action-install-gh-release@v1.12.0
+        uses: jaxxstorm/action-install-gh-release@v1.14.0
         with:
           repo: cross-rs/cross
 
